@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import styled from 'styled-components'
-import { Shield, Plus, Server, Play, Square, Trash2, Eye, Download } from 'lucide-react'
+import { Shield, Plus, Server, Play, Square, Trash2, Eye, Download, Menu, X, FileText, BarChart3, Settings, Home, Database, Globe, Lock, Folder, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { HoneypotCard } from "./components/HoneypotCard"
 import { StatsCard } from './components/StatsCard'
 import { CreateHoneypotModal } from './components/CreateHoneypotModal'
 import { LogsModal } from './components/LogsModal'
+import { HoneypotServicesModal } from './components/HoneypotServicesModal'
 
 export default function Dashboard() {
   const [honeypots, setHoneypots] = useState([])
@@ -17,7 +18,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
+  const [showServicesModal, setShowServicesModal] = useState(false)
   const [selectedHoneypot, setSelectedHoneypot] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState('dashboard')
 
   useEffect(() => {
     loadData()
@@ -130,31 +134,17 @@ export default function Dashboard() {
     loadData()
   }
 
-  if (loading) {
+  const renderDashboard = () => {
+    if (loading) {
+      return (
+        <LoadingContainer>
+          <LoadingSpinner />
+        </LoadingContainer>
+      )
+    }
+
     return (
-      <LoadingContainer>
-        <LoadingSpinner />
-      </LoadingContainer>
-    )
-  }
-
-  return (
-    <DashboardContainer>
-      {/* Header */}
-      <Header>
-        <HeaderContent>
-          <HeaderLeft>
-            <Shield size={32} />
-            <HeaderTitle>Honeypot Dashboard</HeaderTitle>
-          </HeaderLeft>
-          <CreateButton onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} />
-            <span>Create Honeypot</span>
-          </CreateButton>
-        </HeaderContent>
-      </Header>
-
-      <MainContent>
+      <>
         {/* Statistics */}
         <StatsGrid>
           <StatsCard
@@ -214,7 +204,146 @@ export default function Dashboard() {
             </EmptyButton>
           </EmptyState>
         )}
-      </MainContent>
+      </>
+    )
+  }
+
+  const renderLogs = () => (
+    <PageSection>
+      <SectionHeader>
+        <SectionTitle>Logs Management</SectionTitle>
+        <SectionDescription>View and manage logs from all your honeypots</SectionDescription>
+      </SectionHeader>
+      <LogsContent>
+        <p>Logs management interface coming soon...</p>
+      </LogsContent>
+    </PageSection>
+  )
+
+  const renderAnalysis = () => (
+    <PageSection>
+      <SectionHeader>
+        <SectionTitle>Security Analysis</SectionTitle>
+        <SectionDescription>Analyze attack patterns and security insights</SectionDescription>
+      </SectionHeader>
+      <AnalysisContent>
+        <p>Security analysis dashboard coming soon...</p>
+      </AnalysisContent>
+    </PageSection>
+  )
+
+  const renderSettings = () => (
+    <PageSection>
+      <SectionHeader>
+        <SectionTitle>Settings</SectionTitle>
+        <SectionDescription>Configure your honeypot platform</SectionDescription>
+      </SectionHeader>
+      <SettingsContent>
+        <p>Settings panel coming soon...</p>
+      </SettingsContent>
+    </PageSection>
+  )
+
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <LoadingSpinner />
+      </LoadingContainer>
+    )
+  }
+
+  return (
+    <AppContainer>
+      {/* Sidebar */}
+      <Sidebar $isOpen={sidebarOpen}>
+        <SidebarHeader>
+          <SidebarLogo>
+            <Shield size={24} />
+            <SidebarTitle>HoneyShield</SidebarTitle>
+          </SidebarLogo>
+          <SidebarCloseButton onClick={() => setSidebarOpen(false)}>
+            <X size={20} />
+          </SidebarCloseButton>
+        </SidebarHeader>
+
+        <SidebarNav>
+          <SidebarNavItem 
+            $active={currentPage === 'dashboard'} 
+            onClick={() => setCurrentPage('dashboard')}
+          >
+            <Home size={20} />
+            Dashboard
+          </SidebarNavItem>
+          <SidebarNavItem 
+            $active={currentPage === 'logs'} 
+            onClick={() => setCurrentPage('logs')}
+          >
+            <FileText size={20} />
+            Logs
+          </SidebarNavItem>
+          <SidebarNavItem 
+            $active={currentPage === 'analysis'} 
+            onClick={() => setCurrentPage('analysis')}
+          >
+            <BarChart3 size={20} />
+            Analysis
+          </SidebarNavItem>
+          <SidebarNavItem 
+            $active={currentPage === 'settings'} 
+            onClick={() => setCurrentPage('settings')}
+          >
+            <Settings size={20} />
+            Settings
+          </SidebarNavItem>
+        </SidebarNav>
+
+        <SidebarSection>
+          <SidebarSectionTitle>Quick Actions</SidebarSectionTitle>
+          <QuickActionButton onClick={() => setShowCreateModal(true)}>
+            <Plus size={16} />
+            New Honeypot
+          </QuickActionButton>
+          <QuickActionButton onClick={() => setShowServicesModal(true)}>
+            <Server size={16} />
+            Honeypot Services
+          </QuickActionButton>
+        </SidebarSection>
+      </Sidebar>
+
+      {/* Main Content Area */}
+      <MainArea>
+        {/* Header */}
+        <Header>
+          <HeaderContent>
+            <HeaderLeft>
+              <MenuButton onClick={() => setSidebarOpen(true)}>
+                <Menu size={20} />
+              </MenuButton>
+              <HeaderTitle>
+                {currentPage === 'dashboard' && 'Dashboard'}
+                {currentPage === 'logs' && 'Logs Management'}
+                {currentPage === 'analysis' && 'Security Analysis'}
+                {currentPage === 'settings' && 'Settings'}
+              </HeaderTitle>
+            </HeaderLeft>
+            <CreateButton onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} />
+              <span>Create Honeypot</span>
+            </CreateButton>
+          </HeaderContent>
+        </Header>
+
+        {/* Page Content */}
+        <PageContent>
+          {currentPage === 'dashboard' && renderDashboard()}
+          {currentPage === 'logs' && renderLogs()}
+          {currentPage === 'analysis' && renderAnalysis()}
+          {currentPage === 'settings' && renderSettings()}
+        </PageContent>
+      </MainArea>
+
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && <SidebarOverlay onClick={() => setSidebarOpen(false)} />}
 
       {/* Modals */}
       {showCreateModal && (
@@ -225,6 +354,16 @@ export default function Dashboard() {
         />
       )}
 
+      {showServicesModal && (
+        <HoneypotServicesModal
+          onClose={() => setShowServicesModal(false)}
+          onServiceSelect={(serviceType) => {
+            setShowServicesModal(false)
+            // TODO: Open service-specific configuration
+          }}
+        />
+      )}
+
       {showLogsModal && selectedHoneypot && (
         <LogsModal
           honeypotId={selectedHoneypot}
@@ -232,14 +371,167 @@ export default function Dashboard() {
           onClose={() => setShowLogsModal(false)}
         />
       )}
-    </DashboardContainer>
+    </AppContainer>
   )
 }
 
 // Styled Components
-const DashboardContainer = styled.div`
+const AppContainer = styled.div`
+  display: flex;
   min-height: 100vh;
   background: #f9fafb;
+`;
+
+const Sidebar = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 280px;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  z-index: 40;
+  transform: ${({ $isOpen }) => $isOpen ? 'translateX(0)' : 'translateX(-100%)'};
+  transition: transform 0.3s ease;
+
+  @media (min-width: 1024px) {
+    position: relative;
+    transform: translateX(0);
+    z-index: auto;
+  }
+`;
+
+const SidebarOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+`;
+
+const SidebarHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+`;
+
+const SidebarLogo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  svg {
+    color: #2563eb;
+  }
+`;
+
+const SidebarTitle = styled.h1`
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+`;
+
+const SidebarCloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #6b7280;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+`;
+
+const SidebarNav = styled.nav`
+  padding: 1rem 0;
+`;
+
+const SidebarNavItem = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: ${({ $active }) => $active ? '#eff6ff' : 'transparent'};
+  color: ${({ $active }) => $active ? '#2563eb' : '#6b7280'};
+  font-weight: ${({ $active }) => $active ? '600' : '500'};
+  text-align: left;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  svg {
+    color: ${({ $active }) => $active ? '#2563eb' : '#9ca3af'};
+  }
+`;
+
+const SidebarSection = styled.div`
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: auto;
+`;
+
+const SidebarSectionTitle = styled.h3`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+const QuickActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const MainArea = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 0;
+
+  @media (min-width: 1024px) {
+    margin-left: 280px;
+  }
 `;
 
 const Header = styled.header`
@@ -249,8 +541,6 @@ const Header = styled.header`
 `;
 
 const HeaderContent = styled.div`
-  max-width: 80rem;
-  margin: 0 auto;
   padding: 0 1rem;
   display: flex;
   justify-content: space-between;
@@ -269,10 +559,24 @@ const HeaderContent = styled.div`
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+`;
 
-  svg {
-    color: #2563eb;
+const MenuButton = styled.button`
+  background: none;
+  border: none;
+  color: #6b7280;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  @media (min-width: 1024px) {
+    display: none;
   }
 `;
 
@@ -300,9 +604,8 @@ const CreateButton = styled.button`
   }
 `;
 
-const MainContent = styled.main`
-  max-width: 80rem;
-  margin: 0 auto;
+const PageContent = styled.main`
+  flex: 1;
   padding: 2rem 1rem;
 
   @media (min-width: 640px) {
@@ -312,6 +615,42 @@ const MainContent = styled.main`
   @media (min-width: 1024px) {
     padding: 2rem 2rem;
   }
+`;
+
+const PageSection = styled.div`
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  padding: 2rem;
+`;
+
+const SectionHeader = styled.div`
+  margin-bottom: 2rem;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+`;
+
+const SectionDescription = styled.p`
+  color: #6b7280;
+  margin: 0;
+`;
+
+const LogsContent = styled.div`
+  color: #6b7280;
+`;
+
+const AnalysisContent = styled.div`
+  color: #6b7280;
+`;
+
+const SettingsContent = styled.div`
+  color: #6b7280;
 `;
 
 const StatsGrid = styled.div`
@@ -340,7 +679,7 @@ const HoneypotsGrid = styled.div`
 `;
 
 const LoadingContainer = styled.div`
-  min-height: 100vh;
+  min-height: 50vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -368,6 +707,10 @@ const EmptyState = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
 
   svg {
     color: #9ca3af;
