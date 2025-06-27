@@ -191,10 +191,7 @@ export function HoneypotServicesModal({ onClose, onServiceSelect }) {
             {filteredServices.map((service) => {
               const IconComponent = service.icon;
               return (
-                <ServiceCard 
-                  key={service.id}
-                  onClick={() => onServiceSelect(service)}
-                >
+                <ServiceCard key={service.id}>
                   <ServiceHeader>
                     <ServiceIcon>
                       <IconComponent size={24} />
@@ -214,7 +211,10 @@ export function HoneypotServicesModal({ onClose, onServiceSelect }) {
                   </ServiceFeatures>
 
                   <ServiceActions>
-                    <ConfigureButton>
+                    <ConfigureButton onClick={(e) => {
+                      e.stopPropagation();
+                      onServiceSelect(service.id);
+                    }}>
                       Configure Service
                     </ConfigureButton>
                   </ServiceActions>
