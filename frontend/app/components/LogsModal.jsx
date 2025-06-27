@@ -2,14 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { X, Download, RefreshCw, Search } from 'lucide-react';
 
-interface LogsModalProps {
-  honeypotId: string;
-  honeypotName: string;
-  onClose: () => void;
-}
-
-export function LogsModal({ honeypotId, honeypotName, onClose }: LogsModalProps) {
-  const [logs, setLogs] = useState<string>('');
+export function LogsModal({ honeypotId, honeypotName, onClose }) {
+  const [logs, setLogs] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);

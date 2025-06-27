@@ -9,30 +9,15 @@ import { StatsCard } from './components/StatsCard'
 import { CreateHoneypotModal } from './components/CreateHoneypotModal'
 import { LogsModal } from './components/LogsModal'
 
-interface HoneypotConfig {
-  id: string
-  name: string
-  type: string
-  port: number
-  created: string
-  tags: string[]
-}
-
-interface HoneypotStats {
-  total: number
-  running: number
-  stopped: number
-}
-
 export default function Dashboard() {
-  const [honeypots, setHoneypots] = useState<HoneypotConfig[]>([])
-  const [runningHoneypots, setRunningHoneypots] = useState<Record<string, any>>({})
-  const [stats, setStats] = useState<HoneypotStats>({ total: 0, running: 0, stopped: 0 })
-  const [honeypotTypes, setHoneypotTypes] = useState<Record<string, any>>({})
+  const [honeypots, setHoneypots] = useState([])
+  const [runningHoneypots, setRunningHoneypots] = useState({})
+  const [stats, setStats] = useState({ total: 0, running: 0, stopped: 0 })
+  const [honeypotTypes, setHoneypotTypes] = useState({})
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showLogsModal, setShowLogsModal] = useState(false)
-  const [selectedHoneypot, setSelectedHoneypot] = useState<string | null>(null)
+  const [selectedHoneypot, setSelectedHoneypot] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -74,7 +59,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleStartHoneypot = async (id: string) => {
+  const handleStartHoneypot = async (id) => {
     try {
       const response = await fetch(`/api/honeypots/${id}/start`, {
         method: 'POST'
@@ -93,7 +78,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleStopHoneypot = async (id: string) => {
+  const handleStopHoneypot = async (id) => {
     try {
       const response = await fetch(`/api/honeypots/${id}/stop`, {
         method: 'POST'
@@ -112,7 +97,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleDeleteHoneypot = async (id: string) => {
+  const handleDeleteHoneypot = async (id) => {
     if (!confirm('Are you sure you want to delete this honeypot? This action cannot be undone.')) {
       return
     }
@@ -135,7 +120,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleViewLogs = (id: string) => {
+  const handleViewLogs = (id) => {
     setSelectedHoneypot(id)
     setShowLogsModal(true)
   }
@@ -147,28 +132,30 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
+      <LoadingContainer>
+        <LoadingSpinner />
+      </LoadingContainer>
     )
   }
 
   return (
     <DashboardContainer>
+      {/* Header */}
       <Header>
         <HeaderContent>
           <HeaderLeft>
-            <Shield className="h-8 w-8 text-blue-600" />
+            <Shield size={32} />
             <HeaderTitle>Honeypot Dashboard</HeaderTitle>
           </HeaderLeft>
           <CreateButton onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4" />
+            <Plus size={16} />
             <span>Create Honeypot</span>
           </CreateButton>
         </HeaderContent>
       </Header>
 
       <MainContent>
+        {/* Statistics */}
         <StatsGrid>
           <StatsCard
             title="Total Honeypots"
@@ -196,6 +183,7 @@ export default function Dashboard() {
           />
         </StatsGrid>
 
+        {/* Honeypots Grid */}
         <HoneypotsGrid>
           {honeypots.map((honeypot) => (
             <HoneypotCard
@@ -203,32 +191,32 @@ export default function Dashboard() {
               honeypot={{
                 ...honeypot,
                 status: honeypot.id in runningHoneypots ? 'running' : 'stopped',
-                created_at: honeypot.created,
-                config: {}
+                created_at: honeypot.created
               }}
               honeypotType={honeypotTypes[honeypot.type]}
               onStart={() => handleStartHoneypot(honeypot.id)}
               onStop={() => handleStopHoneypot(honeypot.id)}
               onDelete={() => handleDeleteHoneypot(honeypot.id)}
               onViewLogs={() => handleViewLogs(honeypot.id)}
-              onConfigure={() => {}}
+              onConfigure={() => {}} // TODO: Add configure functionality
             />
           ))}
         </HoneypotsGrid>
 
         {honeypots.length === 0 && (
           <EmptyState>
-            <Shield className="mx-auto h-12 w-12 text-gray-400" />
-            <EmptyStateTitle>No honeypots</EmptyStateTitle>
-            <EmptyStateDescription>Get started by creating your first honeypot.</EmptyStateDescription>
-            <EmptyStateButton onClick={() => setShowCreateModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Shield size={48} />
+            <EmptyTitle>No honeypots</EmptyTitle>
+            <EmptyDescription>Get started by creating your first honeypot.</EmptyDescription>
+            <EmptyButton onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} />
               Create Honeypot
-            </EmptyStateButton>
+            </EmptyButton>
           </EmptyState>
         )}
       </MainContent>
 
+      {/* Modals */}
       {showCreateModal && (
         <CreateHoneypotModal
           honeypotTypes={honeypotTypes}
@@ -251,7 +239,7 @@ export default function Dashboard() {
 // Styled Components
 const DashboardContainer = styled.div`
   min-height: 100vh;
-  background-color: #f9fafb;
+  background: #f9fafb;
 `;
 
 const Header = styled.header`
@@ -264,11 +252,15 @@ const HeaderContent = styled.div`
   max-width: 80rem;
   margin: 0 auto;
   padding: 0 1rem;
-  
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 4rem;
+
   @media (min-width: 640px) {
     padding: 0 1.5rem;
   }
-  
+
   @media (min-width: 1024px) {
     padding: 0 2rem;
   }
@@ -277,37 +269,34 @@ const HeaderContent = styled.div`
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 4rem;
+  gap: 0.75rem;
+
+  svg {
+    color: #2563eb;
+  }
 `;
 
 const HeaderTitle = styled.h1`
   font-size: 1.5rem;
   font-weight: 700;
   color: #111827;
-  margin: 0 0 0 0.75rem;
+  margin: 0;
 `;
 
 const CreateButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #3b82f6;
+  padding: 0.5rem 1rem;
+  background: #2563eb;
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 6px;
   font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  transition: background 0.2s ease;
 
   &:hover {
-    background: #2563eb;
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
+    background: #1d4ed8;
   }
 `;
 
@@ -315,11 +304,11 @@ const MainContent = styled.main`
   max-width: 80rem;
   margin: 0 auto;
   padding: 2rem 1rem;
-  
+
   @media (min-width: 640px) {
     padding: 2rem 1.5rem;
   }
-  
+
   @media (min-width: 1024px) {
     padding: 2rem 2rem;
   }
@@ -330,7 +319,7 @@ const StatsGrid = styled.div`
   grid-template-columns: 1fr;
   gap: 1.5rem;
   margin-bottom: 2rem;
-  
+
   @media (min-width: 768px) {
     grid-template-columns: repeat(4, 1fr);
   }
@@ -340,48 +329,78 @@ const HoneypotsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
-  
+
   @media (min-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   @media (min-width: 1280px) {
     grid-template-columns: repeat(3, 1fr);
+  }
+`;
+
+const LoadingContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LoadingSpinner = styled.div`
+  width: 8rem;
+  height: 8rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 50%;
+  border-top-color: #2563eb;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 3rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+
+  svg {
+    color: #9ca3af;
+  }
 `;
 
-const EmptyStateTitle = styled.h3`
-  margin: 0.5rem 0 0 0;
+const EmptyTitle = styled.h3`
   font-size: 0.875rem;
   font-weight: 500;
   color: #111827;
+  margin: 0;
 `;
 
-const EmptyStateDescription = styled.p`
-  margin: 0.25rem 0 0 0;
+const EmptyDescription = styled.p`
   font-size: 0.875rem;
   color: #6b7280;
+  margin: 0;
 `;
 
-const EmptyStateButton = styled.button`
-  display: inline-flex;
+const EmptyButton = styled.button`
+  display: flex;
   align-items: center;
-  margin-top: 1.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #3b82f6;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #2563eb;
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 6px;
   font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-top: 1rem;
 
   &:hover {
-    background: #2563eb;
+    background: #1d4ed8;
   }
 `;

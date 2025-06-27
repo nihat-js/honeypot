@@ -1,15 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import { LucideIcon } from 'lucide-react';
 
-interface StatsCardProps {
-  title: string;
-  value: number;
-  icon: LucideIcon;
-  color: 'blue' | 'green' | 'gray' | 'purple' | 'red';
-}
-
-export function StatsCard({ title, value, icon: Icon, color }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, color }) {
   return (
     <StatsCardContainer>
       <StatsCardContent>
@@ -45,7 +37,7 @@ const StatsCardContent = styled.div`
   gap: 1rem;
 `;
 
-const IconContainer = styled.div<{ color: string }>`
+const IconContainer = styled.div`
   padding: 0.75rem;
   border-radius: 8px;
   display: flex;

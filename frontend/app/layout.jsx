@@ -9,11 +9,7 @@ export const metadata = {
   description: 'Comprehensive honeypot management and monitoring platform',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={inter.className}>
