@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Honeypot Logs - {{ config.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+    <style>
+        .log-viewer {
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+        }
+        .log-line {
+            margin-bottom: 2px;
+            word-wrap: break-word;
+        }
+        .log-timestamp {
+            color: #569cd6;
+        }
+        .log-ip {
+            color: #ce9178;
+        }
+        .log-action {
+            color: #4ec9b0;
+        }
+        .log-data {
+            color: #d7ba7d;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-running {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .status-stopped {
+            background-color: #6c757d;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-shield-check"></i> Honeypot Dashboard
+            </a>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-light">Dashboard</a></li>
+                    <li class="breadcrumb-item active text-light">{{ config.name }} Logs</li>
+                </ol>
+            </nav>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Honeypot Info Header -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h3>
+                                    <i class="bi bi-file-text"></i> {{ config.name }}
+                                    <span class="status-indicator {{ 'status-running' if is_running else 'status-stopped' }}"></span>
+                                    <small class="text-muted">
+                                        {{ 'Running' if is_running else 'Stopped' }}
+                                    </small>
+                                </h3>
+                                <p class="mb-1">
+                                    <strong>Type:</strong> <span class="badge bg-info">{{ config.type }}</span>
+                                    <strong>Port:</strong> {{ config.port }}
+                                    <strong>Created:</strong> {{ config.created_at[:19] if config.created_at else 'Unknown' }}
+                                </p>
+                                {% if config.tags %}
+                                <p class="mb-0">
+                                    <strong>Tags:</strong>
+                                    {% for tag in config.tags %}
+                                        <span class="badge bg-secondary">{{ tag }}</span>
+                                    {% endfor %}
+                                </p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group" role="group">
+                                    {% if is_running %}
+                                        <button class="btn btn-warning" onclick="stopHoneypot('{{ honeypot_id }}')">
+                                            <i class="bi bi-stop"></i> Stop
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-success" onclick="startHoneypot('{{ honeypot_id }}')">
+                                            <i class="bi bi-play"></i> Start
+                                        </button>
+                                    {% endif %}
+                                    <a href="{{ url_for('download_logs', honeypot_id=honeypot_id) }}" 
+                                       class="btn btn-primary">
+                                        <i class="bi bi-download"></i> Download Logs
+                                    </a>
+                                    <button class="btn btn-info" onclick="refreshLogs()">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Connections</h5>
+                        <h2 class="text-primary" id="total-connections">{{ logs|length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Unique IPs</h5>
+                        <h2 class="text-warning" id="unique-ips">
+                            {% set unique_ips = [] %}
+                            {% for log in logs %}
+                                {% if log and 'Connection from' in log %}
+                                    {% set ip = log.split('Connection from ')[1].split(':')[0] %}
+                                    {% if ip not in unique_ips %}
+                                        {% set _ = unique_ips.append(ip) %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ unique_ips|length }}
+                        </h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Last Activity</h5>
+                        <p class="text-success" id="last-activity">
+                            {% if logs %}
+                                {% for log in logs|reverse %}
+                                    {% if log and '[' in log %}
+                                        {{ log.split('[')[1].split(']')[0][:19] }}
+                                        {% break %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                No activity
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Status</h5>
+                        <h5>
+                            {% if is_running %}
+                                <span class="badge bg-success fs-6">
+                                    <i class="bi bi-play-fill"></i> Active
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary fs-6">
+                                    <i class="bi bi-stop-fill"></i> Inactive
+                                </span>
+                            {% endif %}
+                        </h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Log Viewer -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>
+                            <i class="bi bi-terminal"></i> Live Activity Log
+                            <small class="text-muted">(Last 100 entries)</small>
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-viewer" id="log-viewer">
+                            {% if logs %}
+                                {% for log in logs %}
+                                    {% if log.strip() %}
+                                        <div class="log-line">{{ log|e }}</div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="log-line text-muted">No logs available. Start the honeypot to begin capturing activity.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Analysis (if logs exist) -->
+        {% if logs %}
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-bar-chart"></i> Top Source IPs</h5>
+                    </div>
+                    <div class="card-body">
+                        {% set ip_counts = {} %}
+                        {% for log in logs %}
+                            {% if log and 'Connection from' in log %}
+                                {% set ip = log.split('Connection from ')[1].split(':')[0] %}
+                                {% set _ = ip_counts.update({ip: ip_counts.get(ip, 0) + 1}) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if ip_counts %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>IP Address</th>
+                                            <th>Connection Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ip, count in (ip_counts.items()|list)[:10] %}
+                                        <tr>
+                                            <td><code>{{ ip }}</code></td>
+                                            <td><span class="badge bg-danger">{{ count }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No connection data available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-clock"></i> Recent Activity</h5>
+                    </div>
+                    <div class="card-body">
+                        {% set recent_logs = logs[-10:] %}
+                        {% if recent_logs %}
+                            {% for log in recent_logs|reverse %}
+                                {% if log.strip() %}
+                                    <div class="mb-2 small">
+                                        <code>{{ log[:100] }}{% if log|length > 100 %}...{% endif %}</code>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No recent activity.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function startHoneypot(honeypotId) {
+            if (confirm('Start this honeypot?')) {
+                fetch('/start_honeypot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({honeypot_id: honeypotId})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
+        }
+
+        function stopHoneypot(honeypotId) {
+            if (confirm('Stop this honeypot?')) {
+                fetch('/stop_honeypot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({honeypot_id: honeypotId})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                });
+            }
+        }
+
+        function refreshLogs() {
+            location.reload();
+        }
+
+        // Auto-scroll log viewer to bottom
+        const logViewer = document.getElementById('log-viewer');
+        if (logViewer) {
+            logViewer.scrollTop = logViewer.scrollHeight;
+        }
+
+        // Auto-refresh logs every 10 seconds if honeypot is running
+        {% if is_running %}
+        setInterval(function() {
+            location.reload();
+        }, 10000);
+        {% endif %}
+    </script>
+</body>
+</html>

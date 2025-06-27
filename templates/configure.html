@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure {{ honeypot_info.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-shield-check"></i> Honeypot Dashboard
+            </a>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-light">Dashboard</a></li>
+                    <li class="breadcrumb-item active text-light">Configure {{ honeypot_info.name }}</li>
+                </ol>
+            </nav>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-gear"></i> Configure {{ honeypot_info.name }}</h3>
+                        <p class="mb-0 text-muted">{{ honeypot_info.description }}</p>
+                    </div>
+                    <div class="card-body">
+                        <form id="honeypotForm">
+                            <input type="hidden" id="honeypot_type" value="{{ honeypot_type }}">
+                            
+                            <!-- Basic Configuration -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-sliders"></i> Basic Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Honeypot Name</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ honeypot_type|title }} Honeypot" required>
+                                    <div class="form-text">A friendly name to identify this honeypot</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="port" class="form-label">Port</label>
+                                    <select class="form-select" id="port" name="port" required>
+                                        {% for port in honeypot_info.supported_ports %}
+                                            <option value="{{ port }}" 
+                                                    {% if port == honeypot_info.default_port %}selected{% endif %}>
+                                                {{ port }}
+                                                {% if port == 21 %} (FTP)
+                                                {% elif port == 22 %} (SSH)
+                                                {% elif port == 23 %} (Telnet)
+                                                {% elif port == 25 %} (SMTP)
+                                                {% elif port == 53 %} (DNS)
+                                                {% elif port == 80 %} (HTTP)
+                                                {% elif port == 110 %} (POP3)
+                                                {% elif port == 143 %} (IMAP)
+                                                {% elif port == 443 %} (HTTPS)
+                                                {% elif port == 993 %} (IMAPS)
+                                                {% elif port == 995 %} (POP3S)
+                                                {% elif port == 2222 %} (SSH Alt)
+                                                {% elif port == 3306 %} (MySQL)
+                                                {% elif port == 8080 %} (HTTP Alt)
+                                                {% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="tags" class="form-label">Tags</label>
+                                    <input type="text" class="form-control" id="tags" name="tags" 
+                                           placeholder="production, ssh, critical">
+                                    <div class="form-text">Comma-separated tags for organization</div>
+                                </div>
+                            </div>
+
+                            <!-- Authentication Settings -->
+                            {% if 'ssh' in honeypot_info.features or 'telnet' in honeypot_info.features %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-key"></i> Authentication Settings</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Fake Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" 
+                                           value="admin">
+                                    <div class="form-text">Username that will be accepted by the honeypot</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Fake Password</label>
+                                    <input type="password" class="form-control" id="password" name="password" 
+                                           value="password">
+                                    <div class="form-text">Password that will be accepted by the honeypot</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- FTP Honeypot Specific Settings -->
+                            {% if honeypot_type == 'ftp_honeypot' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-folder"></i> FTP Configuration</h5>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="anonymous_login" 
+                                           name="anonymous_login" checked>
+                                    <label class="form-check-label" for="anonymous_login">
+                                        Allow Anonymous Login
+                                    </label>
+                                    <div class="form-text">Allow anonymous FTP access without credentials</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="ftp_banner" class="form-label">FTP Welcome Banner</label>
+                                    <textarea class="form-control" id="ftp_banner" name="ftp_banner" rows="2">220 Welcome to FTP Server</textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="max_connections" class="form-label">Max Concurrent Connections</label>
+                                    <input type="number" class="form-control" id="max_connections" name="max_connections" value="10" min="1" max="100">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fake_files" class="form-label">Fake Directory Structure</label>
+                                    <textarea class="form-control" id="fake_files" name="fake_files" rows="4" placeholder="documents/confidential.pdf&#10;backups/database.sql&#10;uploads/&#10;logs/access.log">documents/confidential.pdf
+backups/database.sql
+uploads/
+logs/access.log</textarea>
+                                    <div class="form-text">One file/directory per line. End directories with /</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Telnet Switch Specific Settings -->
+                            {% if honeypot_type == 'telnet_switch' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-router"></i> Network Device Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="device_type" class="form-label">Device Type</label>
+                                    <select class="form-select" id="device_type" name="device_type">
+                                        <option value="cisco_switch">Cisco Catalyst Switch</option>
+                                        <option value="cisco_router">Cisco ISR Router</option>
+                                        <option value="juniper_switch">Juniper EX Switch</option>
+                                        <option value="hp_switch">HP ProCurve Switch</option>
+                                        <option value="generic_switch">Generic Network Switch</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="hostname" class="form-label">Device Hostname</label>
+                                    <input type="text" class="form-control" id="hostname" name="hostname" value="SW-CORE-01">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="enable_password" class="form-label">Enable Password</label>
+                                    <input type="password" class="form-control" id="enable_password" name="enable_password" value="enable123">
+                                    <div class="form-text">Password for privileged EXEC mode</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="motd" class="form-label">Message of the Day</label>
+                                    <textarea class="form-control" id="motd" name="motd" rows="3">***************************************************
+* Authorized Access Only - All Activity Monitored *
+***************************************************</textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="interface_config" class="form-label">Fake Interface Configuration</label>
+                                    <textarea class="form-control" id="interface_config" name="interface_config" rows="4">GigabitEthernet0/1: up/up
+GigabitEthernet0/2: up/up  
+GigabitEthernet0/3: down/down
+FastEthernet0/24: up/up</textarea>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- MySQL Honeypot Specific Settings -->
+                            {% if honeypot_type == 'mysql_honeypot' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-database"></i> MySQL Database Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="mysql_version" class="form-label">MySQL Version</label>
+                                    <select class="form-select" id="mysql_version" name="mysql_version">
+                                        <option value="8.0.28">MySQL 8.0.28</option>
+                                        <option value="5.7.36" selected>MySQL 5.7.36</option>
+                                        <option value="5.6.51">MySQL 5.6.51</option>
+                                        <option value="5.5.62">MySQL 5.5.62</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="database_names" class="form-label">Fake Database Names</label>
+                                    <textarea class="form-control" id="database_names" name="database_names" rows="3" placeholder="One database per line">production_db
+customer_data
+financial_records
+user_accounts</textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="user_accounts" class="form-label">Fake User Accounts</label>
+                                    <textarea class="form-control" id="user_accounts" name="user_accounts" rows="4" placeholder="username:password:host">root:admin123:localhost
+admin:password:localhost
+developer:dev123:%
+backup_user:backup456:192.168.1.%</textarea>
+                                    <div class="form-text">Format: username:password:host (% = wildcard)</div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="ssl_enabled" name="ssl_enabled">
+                                    <label class="form-check-label" for="ssl_enabled">
+                                        Enable SSL/TLS
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- phpMyAdmin Honeypot Specific Settings -->
+                            {% if honeypot_type == 'phpmyadmin_honeypot' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-globe"></i> phpMyAdmin Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="phpmyadmin_version" class="form-label">phpMyAdmin Version</label>
+                                    <select class="form-select" id="phpmyadmin_version" name="phpmyadmin_version">
+                                        <option value="5.1.1">phpMyAdmin 5.1.1</option>
+                                        <option value="5.0.4" selected>phpMyAdmin 5.0.4</option>
+                                        <option value="4.9.7">phpMyAdmin 4.9.7</option>
+                                        <option value="4.8.5">phpMyAdmin 4.8.5</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="theme" class="form-label">Interface Theme</label>
+                                    <select class="form-select" id="theme" name="theme">
+                                        <option value="pmahomme">Original (pmahomme)</option>
+                                        <option value="original">Classic Original</option>
+                                        <option value="metro">Metro</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fake_databases" class="form-label">Visible Fake Databases</label>
+                                    <textarea class="form-control" id="fake_databases" name="fake_databases" rows="3">information_schema
+mysql
+performance_schema
+wordpress_db</textarea>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="show_login_page" name="show_login_page" checked>
+                                    <label class="form-check-label" for="show_login_page">
+                                        Show Login Page
+                                    </label>
+                                    <div class="form-text">Display phpMyAdmin login form to capture credentials</div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- RDP Honeypot Specific Settings -->
+                            {% if honeypot_type == 'rdp_honeypot' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-display"></i> RDP Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="computer_name" class="form-label">Computer Name</label>
+                                    <input type="text" class="form-control" id="computer_name" name="computer_name" value="WIN-SERVER-01">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="domain_name" class="form-label">Domain Name</label>
+                                    <input type="text" class="form-control" id="domain_name" name="domain_name" value="COMPANY.LOCAL">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="fake_users" class="form-label">Fake User Accounts</label>
+                                    <textarea class="form-control" id="fake_users" name="fake_users" rows="4">Administrator:admin123
+Guest:
+JohnDoe:password123
+ServiceAccount:Service456</textarea>
+                                    <div class="form-text">Format: username:password (empty password = disabled account)</div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="screenshot_capture" name="screenshot_capture" checked>
+                                    <label class="form-check-label" for="screenshot_capture">
+                                        Enable Screenshot Capture
+                                    </label>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- SMTP Honeypot Specific Settings -->
+                            {% if honeypot_type == 'smtp_honeypot' %}
+                            <div class="mb-4">
+                                <h5><i class="bi bi-envelope"></i> SMTP Configuration</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="server_name" class="form-label">SMTP Server Name</label>
+                                    <input type="text" class="form-control" id="server_name" name="server_name" value="mail.company.com">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="smtp_banner" class="form-label">SMTP Banner</label>
+                                    <textarea class="form-control" id="smtp_banner" name="smtp_banner" rows="2">220 mail.company.com ESMTP Postfix</textarea>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="relay_allowed" name="relay_allowed">
+                                    <label class="form-check-label" for="relay_allowed">
+                                        Allow Mail Relay (Open Relay)
+                                    </label>
+                                    <div class="form-text">WARNING: This makes the honeypot appear as an open mail relay</div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="auth_required" name="auth_required" checked>
+                                    <label class="form-check-label" for="auth_required">
+                                        Require Authentication
+                                    </label>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="max_message_size" class="form-label">Max Message Size (MB)</label>
+                                    <input type="number" class="form-control" id="max_message_size" name="max_message_size" value="25" min="1" max="100">
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Banner Settings -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-chat-square-text"></i> Banner Settings</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="banner" class="form-label">Custom Banner</label>
+                                    <textarea class="form-control" id="banner" name="banner" rows="3" 
+                                              placeholder="Welcome to Ubuntu 22.04 LTS server">{% if honeypot_type == 'cowrie' %}Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-72-generic x86_64){% elif honeypot_type == 'dionaea' %}220 FTP server ready{% endif %}</textarea>
+                                    <div class="form-text">Banner message shown to connecting clients</div>
+                                </div>
+                            </div>
+
+                            <!-- Template Settings -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-layout-text-window"></i> Environment Template</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="template" class="form-label">Fake Environment</label>
+                                    <select class="form-select" id="template" name="template">
+                                        <option value="default">Default Environment</option>
+                                        <option value="banking">Fake Banking System</option>
+                                        <option value="iot">IoT Device</option>
+                                        <option value="medical">Medical Records System</option>
+                                        <option value="industrial">Industrial Control System</option>
+                                        <option value="university">University Network</option>
+                                        <option value="ecommerce">E-commerce Platform</option>
+                                    </select>
+                                    <div class="form-text">Simulated environment type</div>
+                                </div>
+                            </div>
+
+                            <!-- File Upload -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-file-earmark-arrow-up"></i> Bait Files</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="bait_files" class="form-label">Upload Bait Files</label>
+                                    <input type="file" class="form-control" id="bait_files" name="bait_files" 
+                                           multiple accept=".txt,.pdf,.docx,.zip,.py,.sh,.conf">
+                                    <div class="form-text">Upload files to act as bait in the honeypot filesystem</div>
+                                </div>
+                            </div>
+
+                            <!-- Logging Settings -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-journal-text"></i> Logging & Monitoring</h5>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_logging" 
+                                           name="enable_logging" checked>
+                                    <label class="form-check-label" for="enable_logging">
+                                        Enable Logging
+                                    </label>
+                                </div>
+
+                                {% if 'session_recording' in honeypot_info.features %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="enable_recording" 
+                                           name="enable_recording">
+                                    <label class="form-check-label" for="enable_recording">
+                                        Enable Session Recording
+                                    </label>
+                                    <div class="form-text">Record full session interactions</div>
+                                </div>
+                                {% endif %}
+
+                                <div class="mb-3">
+                                    <label for="log_location" class="form-label">Log Storage Location</label>
+                                    <select class="form-select" id="log_location" name="log_location">
+                                        <option value="local">Local Storage</option>
+                                        <option value="s3">AWS S3</option>
+                                        <option value="azure">Azure Blob Storage</option>
+                                        <option value="gcs">Google Cloud Storage</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="retention_days" class="form-label">Log Retention (Days)</label>
+                                    <input type="number" class="form-control" id="retention_days" 
+                                           name="retention_days" value="30" min="1" max="365">
+                                </div>
+                            </div>
+
+                            <!-- Alert Settings -->
+                            <div class="mb-4">
+                                <h5><i class="bi bi-bell"></i> Alert Settings</h5>
+                                
+                                <div class="mb-3">
+                                    <label for="alert_email" class="form-label">Email Alerts</label>
+                                    <input type="email" class="form-control" id="alert_email" name="alert_email" 
+                                           placeholder="admin@company.com">
+                                    <div class="form-text">Email address for security alerts</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="alert_webhook" class="form-label">Webhook URL</label>
+                                    <input type="url" class="form-control" id="alert_webhook" name="alert_webhook" 
+                                           placeholder="https://hooks.slack.com/services/...">
+                                    <div class="form-text">Webhook for Slack, Discord, or custom integrations</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                                </a>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Save Configuration
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.getElementById('honeypotForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const honeypotType = document.getElementById('honeypot_type').value;
+            
+            // Base configuration
+            const data = {
+                honeypot_type: honeypotType,
+                name: formData.get('name'),
+                port: formData.get('port'),
+                username: formData.get('username'),
+                password: formData.get('password'),
+                banner: formData.get('banner'),
+                template: formData.get('template'),
+                enable_logging: document.getElementById('enable_logging').checked,
+                alert_email: formData.get('alert_email'),
+                alert_webhook: formData.get('alert_webhook'),
+                log_location: formData.get('log_location'),
+                retention_days: formData.get('retention_days'),
+                tags: formData.get('tags') ? formData.get('tags').split(',').map(t => t.trim()) : []
+            };
+
+            // Add enable_recording if checkbox exists
+            const recordingCheckbox = document.getElementById('enable_recording');
+            if (recordingCheckbox) {
+                data.enable_recording = recordingCheckbox.checked;
+            }
+
+            // Add honeypot-specific configurations
+            if (honeypotType === 'ftp_honeypot') {
+                data.anonymous_login = document.getElementById('anonymous_login').checked;
+                data.ftp_banner = formData.get('ftp_banner');
+                data.max_connections = formData.get('max_connections');
+                data.fake_files = formData.get('fake_files');
+            } else if (honeypotType === 'telnet_switch') {
+                data.device_type = formData.get('device_type');
+                data.hostname = formData.get('hostname');
+                data.enable_password = formData.get('enable_password');
+                data.motd = formData.get('motd');
+                data.interface_config = formData.get('interface_config');
+            } else if (honeypotType === 'mysql_honeypot') {
+                data.mysql_version = formData.get('mysql_version');
+                data.database_names = formData.get('database_names');
+                data.user_accounts = formData.get('user_accounts');
+                data.ssl_enabled = document.getElementById('ssl_enabled').checked;
+            } else if (honeypotType === 'phpmyadmin_honeypot') {
+                data.phpmyadmin_version = formData.get('phpmyadmin_version');
+                data.theme = formData.get('theme');
+                data.fake_databases = formData.get('fake_databases');
+                data.show_login_page = document.getElementById('show_login_page').checked;
+            } else if (honeypotType === 'rdp_honeypot') {
+                data.computer_name = formData.get('computer_name');
+                data.domain_name = formData.get('domain_name');
+                data.fake_users = formData.get('fake_users');
+                data.screenshot_capture = document.getElementById('screenshot_capture').checked;
+            } else if (honeypotType === 'smtp_honeypot') {
+                data.server_name = formData.get('server_name');
+                data.smtp_banner = formData.get('smtp_banner');
+                data.relay_allowed = document.getElementById('relay_allowed').checked;
+                data.auth_required = document.getElementById('auth_required').checked;
+                data.max_message_size = formData.get('max_message_size');
+            } else if (honeypotType === 'cowrie') {
+                // Cowrie keeps existing username/password handling
+                const anonymousCheckbox = document.getElementById('anonymous_login');
+                if (anonymousCheckbox) {
+                    data.anonymous_login = anonymousCheckbox.checked;
+                }
+            }
+
+            fetch('/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Configuration saved successfully!');
+                    window.location.href = '/';
+                } else {
+                    alert('Error saving configuration: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        });
+
+        // File upload handler
+        document.getElementById('bait_files').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                for (let file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    fetch('/upload_file', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('File uploaded:', data.filename);
+                            // Show success message
+                            const alertDiv = document.createElement('div');
+                            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-2';
+                            alertDiv.innerHTML = `
+                                File "${data.filename}" uploaded successfully!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            `;
+                            document.getElementById('bait_files').parentNode.appendChild(alertDiv);
+                        } else {
+                            alert('Error uploading file: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Upload error: ' + error);
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>
